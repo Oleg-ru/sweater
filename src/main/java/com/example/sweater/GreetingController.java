@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import java.util.List;
 import java.util.Map;
 
 @Controller
@@ -19,25 +18,22 @@ public class GreetingController {
      */
     @Autowired
     private MessageRepository messageRepository;
+    /*
+        Lesson_3 CSRF
+    Spring MVC будет дополнительно отдавать в контролере доп параметры, и они будут переходить в шаблон,
+    для этого добавляется невидимое поле в каждой форме (mustache или html)
+     */
 
-    @GetMapping("/greeting")
-    public String greeting(
-            @RequestParam(name = "name", required = false,defaultValue = "World")
-                    String name, Map<String, Object> model) {
-        model.put("name", name);
+    @GetMapping("/")
+    public String greeting(Map<String, Object> model) {
         return "greeting";
     }
-    @GetMapping
+    @GetMapping("/main")
     public String index(Map<String, Object> model) {
-        //Разобраться с этой частью
-        Iterable<Message> messages = messageRepository.findAll();
-
-        model.put("messages", messages);
-
-        return "index";
+        return "main";
     }
 
-    @PostMapping("index")
+    @PostMapping("/main")
     public String add(@RequestParam String text, @RequestParam String tag, Map<String, Object> model) {
         //Добавляю в список сообщения по нажатию кнопки
         Message message = new Message(text, tag);
@@ -46,7 +42,7 @@ public class GreetingController {
         //Вывод списка (так делать не надо, это должно быть разделено на /add и /all)
         Iterable<Message> messages = messageRepository.findAll();
         model.put("messages", messages);
-        return "index";
+        return "main";
     }
 
     //Указывается в параметре аннотации mapping из html файла 'action="filter"'
@@ -61,6 +57,6 @@ public class GreetingController {
         }
 
         model.put("messages", messages);
-        return "index";
+        return "main";
     }
 }

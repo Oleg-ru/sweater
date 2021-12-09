@@ -5,15 +5,15 @@ package com.example.sweater.config;
 что только аутентифицированные пользователи смогут увидеть секретное приветствие (страницу):
  */
 
-import org.springframework.context.annotation.Bean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+
+import javax.sql.DataSource;
 
 
 /*
@@ -23,6 +23,8 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 @Configuration
 @EnableWebSecurity
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+    @Autowired
+    private DataSource dataSource; //генерируется спринг и можем легко получить
     /*
     Метод configure (HttpSecurity) определяет, какие URL-пути должны быть защищены, а какие нет.
     В частности, пути / и /home настроены так, чтобы не требовалось никакой аутентификации.
@@ -37,7 +39,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     protected void configure(HttpSecurity http) throws Exception {
         http.
                 authorizeRequests()// включаем авторизацию
-                    .antMatchers("/").permitAll()// <-Разрешаем полный доступ"permitAll()" на <- эти странички
+                    .antMatchers("/","/registration").permitAll()// <-Разрешаем полный доступ"permitAll()" на <- эти странички
                     .anyRequest().authenticated()// для всех остальных запросов "anyRequest()" - требуем авторизацию "authenticated()"
                     .and()
                 .formLogin()// включаем форму логин
@@ -50,19 +52,16 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
     /*
-    Метод UserDetailsService() настраивает хранилище пользователей в памяти с одним пользователем.
-    Этому пользователю присваивается имя пользователя user, пароль password и роль USER.
-        Будет выдаваться системе по требованию этот метод
+    Будем брать пользователя из БД
      */
-    @Bean
     @Override
-    public UserDetailsService userDetailsService() {
-        UserDetails user =
-                User.withDefaultPasswordEncoder()//нужен для тестирования, он ничего не шифрует, ничего не хранит, и при каждом запске создает этого пользователя
-                        .username("u")
-                        .password("p")
-                        .roles("USER")
-                        .build();
-        return new InMemoryUserDetailsManager(user); // создает в памяти менеджер который обслуживает ученые записи
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.jdbcAuthentication()
+                .dataSource(dataSource) // нужен для того, что бы менеджер мог ходить в БД и искать там пользователей и их роли
+                .passwordEncoder(NoOpPasswordEncoder.getInstance()) // шифрование пароля, что бы не хранился в явнов виде.. NoOpPasswordEncoder - используется только для тестирования
+                .usersByUsernameQuery("select username,password,active from usr where username = ?")  // добавление запроса, что бы система смогла найти пользователя по его имени,
+                                                                                                        // порядок важен, он опрежелен системой
+                .authoritiesByUsernameQuery("select u.username, ur.roles from usr u inner join user_role ur on u.id = ur.user_id where u.username=?"); // Позволяет получить спрингу список пользователей с из ролями
+                // из таблицы user с присоединненной к ней таблицей user_role соеденной через поля u.id = ur.user_id выбираем выбираем поля u.username, ur.roles
     }
 }

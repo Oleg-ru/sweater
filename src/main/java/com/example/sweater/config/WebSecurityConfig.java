@@ -5,6 +5,7 @@ package com.example.sweater.config;
 что только аутентифицированные пользователи смогут увидеть секретное приветствие (страницу):
  */
 
+import com.example.sweater.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -24,7 +25,9 @@ import javax.sql.DataSource;
 @EnableWebSecurity
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
-    private DataSource dataSource; //генерируется спринг и можем легко получить
+    private UserService userService;
+    //@Autowired
+    //private DataSource dataSource; //генерируется спринг и можем легко получить
     /*
     Метод configure (HttpSecurity) определяет, какие URL-пути должны быть защищены, а какие нет.
     В частности, пути / и /home настроены так, чтобы не требовалось никакой аутентификации.
@@ -56,12 +59,8 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
      */
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        auth.jdbcAuthentication()
-                .dataSource(dataSource) // нужен для того, что бы менеджер мог ходить в БД и искать там пользователей и их роли
-                .passwordEncoder(NoOpPasswordEncoder.getInstance()) // шифрование пароля, что бы не хранился в явнов виде.. NoOpPasswordEncoder - используется только для тестирования
-                .usersByUsernameQuery("select username,password,active from usr where username = ?")  // добавление запроса, что бы система смогла найти пользователя по его имени,
-                                                                                                        // порядок важен, он опрежелен системой
-                .authoritiesByUsernameQuery("select u.username, ur.roles from usr u inner join user_role ur on u.id = ur.user_id where u.username=?"); // Позволяет получить спрингу список пользователей с из ролями
-                // из таблицы user с присоединненной к ней таблицей user_role соеденной через поля u.id = ur.user_id выбираем выбираем поля u.username, ur.roles
+        auth.userDetailsService(userService)
+                .passwordEncoder(NoOpPasswordEncoder.getInstance()); // шифрование пароля, что бы не хранился в явнов виде.. NoOpPasswordEncoder - используется только для тестирования
+
     }
 }
